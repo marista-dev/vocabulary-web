@@ -103,14 +103,21 @@
             
             showQuestion();
             
-            // Enable keyboard navigation
-            enableKeyboardNavigation({
-                onEnter: () => {
+            // Enable Enter key on input field
+            document.getElementById('answerInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
                     if (!isAnswered) {
                         verifyAnswer();
-                    } else {
-                        nextQuestion();
                     }
+                }
+            });
+            
+            // Enable Enter key for next button when answer is shown
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && isAnswered) {
+                    e.preventDefault();
+                    nextQuestion();
                 }
             });
             
@@ -180,11 +187,15 @@
             
             feedback.style.display = 'block';
             input.disabled = true;
-            isAnswered = true;
             
             document.getElementById('checkBtn').style.display = 'none';
             document.getElementById('nextBtn').style.display = 'block';
-            document.getElementById('nextBtn').focus();
+            
+            // Set isAnswered after a small delay to prevent immediate next question
+            setTimeout(() => {
+                isAnswered = true;
+                document.getElementById('nextBtn').focus();
+            }, 100);
         }
         
         function nextQuestion() {
