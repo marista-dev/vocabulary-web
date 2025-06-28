@@ -22,13 +22,12 @@
         <main class="menu-container">
             <div class="welcome-card">
                 <h2>환영합니다!</h2>
-                <p>CSV 파일을 업로드하여 퀴즈를 시작하세요</p>
+                <p>voca.csv 파일을 수정하고 업데이트하여 퀴즈를 시작하세요</p>
             </div>
             
             <div class="file-upload-section">
-                <input type="file" id="csvFile" accept=".csv" style="display: none;">
-                <button class="btn-primary" onclick="document.getElementById('csvFile').click()">
-                    CSV 파일 선택
+                <button class="btn-primary" onclick="loadVocabularyFromCSV()">
+                    단어 데이터 업데이트
                 </button>
                 <div id="fileStatus" class="file-status"></div>
             </div>
@@ -63,46 +62,53 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="app.js"></script>
     <script>
-        document.getElementById('csvFile').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                Papa.parse(file, {
-                    complete: function(results) {
-                        try {
-                            if (results.errors.length > 0) {
-                                console.warn('CSV parsing warnings:', results.errors);
+        function loadVocabularyFromCSV() {
+            fetch('voca.csv')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('voca.csv 파일을 찾을 수 없습니다.');
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    Papa.parse(csvText, {
+                        complete: function(results) {
+                            try {
+                                if (results.errors.length > 0) {
+                                    console.warn('CSV parsing warnings:', results.errors);
+                                }
+                                
+                                const vocabulary = results.data
+                                    .filter(row => row.단어 && row.정의)
+                                    .map(row => ({
+                                        word: row.단어.trim(),
+                                        definition: row.정의.trim()
+                                    }));
+                                
+                                if (vocabulary.length > 0) {
+                                    localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+                                    document.getElementById('fileStatus').textContent = 
+                                        `${vocabulary.length}개 단어 업데이트됨`;
+                                    document.getElementById('startQuizBtn').disabled = false;
+                                    document.getElementById('totalWords').textContent = vocabulary.length;
+                                    updateWrongCount();
+                                } else {
+                                    alert('CSV 파일에서 유효한 단어를 찾을 수 없습니다. 형식: 단어,정의');
+                                }
+                            } catch (error) {
+                                console.error('Error processing CSV:', error);
+                                alert('CSV 파일 처리 중 오류가 발생했습니다.');
                             }
-                            
-                            const vocabulary = results.data
-                                .filter(row => row.length >= 2 && row[0] && row[1])
-                                .map(row => ({
-                                    word: row[0].trim(),
-                                    definition: row[1].trim()
-                                }));
-                            
-                            if (vocabulary.length > 0) {
-                                localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
-                                document.getElementById('fileStatus').textContent = 
-                                    `${vocabulary.length}개 단어 로드됨`;
-                                document.getElementById('startQuizBtn').disabled = false;
-                                document.getElementById('totalWords').textContent = vocabulary.length;
-                                updateWrongCount();
-                            } else {
-                                alert('CSV 파일에서 유효한 단어를 찾을 수 없습니다. 형식: 단어,정의');
-                            }
-                        } catch (error) {
-                            console.error('Error processing CSV:', error);
-                            alert('CSV 파일 처리 중 오류가 발생했습니다.');
-                        }
-                    },
-                    error: function(error) {
-                        console.error('CSV parsing error:', error);
-                        alert('CSV 파일을 읽을 수 없습니다.');
-                    },
-                    encoding: 'UTF-8'
+                        },
+                        header: true,
+                        encoding: 'UTF-8'
+                    });
+                })
+                .catch(error => {
+                    console.error('Error loading CSV file:', error);
+                    alert('voca.csv 파일을 불러올 수 없습니다. HTTP 서버를 통해 실행해주세요.');
                 });
-            }
-        });
+        }
         
         function startQuiz() {
             window.location.href = 'quiz.html';
@@ -123,15 +129,24 @@
             document.getElementById('wrongWords').textContent = wrongAnswers.length;
         }
         
+
+        // Load vocabulary on page load
+        function loadInitialVocabulary() {
+            const vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+            if (vocabulary.length > 0) {
+                document.getElementById('fileStatus').textContent = 
+                    `${vocabulary.length}개 단어 로드됨`;
+                document.getElementById('startQuizBtn').disabled = false;
+                document.getElementById('totalWords').textContent = vocabulary.length;
+            } else {
+                // Try to load from CSV file first
+                loadVocabularyFromCSV();
+            }
+        }
+        
         // Initialize
         updateWrongCount();
-        const vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
-        if (vocabulary.length > 0) {
-            document.getElementById('fileStatus').textContent = 
-                `${vocabulary.length}개 단어 로드됨`;
-            document.getElementById('startQuizBtn').disabled = false;
-            document.getElementById('totalWords').textContent = vocabulary.length;
-        }
+        loadInitialVocabulary();
     </script>
 </body>
 </html>
