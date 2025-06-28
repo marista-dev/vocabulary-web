@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="오답 복습">
+    
+    <title>어휘 퀴즈 - 오답 복습</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>오답 복습</h1>
+        </header>
+        
+        <main>
+            <div class="review-container">
+                <div class="review-header">
+                    <h2>틀린 단어 목록</h2>
+                    <p><span id="wrongCount">0</span>개의 단어를 복습합니다</p>
+                </div>
+                
+                <div id="wrongAnswersList" class="wrong-answers-list">
+                    <!-- Wrong answers will be displayed here -->
+                </div>
+                
+                <div class="review-actions">
+                    <button class="btn-primary" onclick="retryWrongAnswers()">
+                        오답만 다시 퀴즈
+                    </button>
+                    <button class="btn-secondary" onclick="clearAndGoHome()">
+                        오답 초기화
+                    </button>
+                </div>
+                
+                <div style="margin-top: 1rem;">
+                    <button class="btn-secondary btn-large" onclick="window.location.href='index.html'">
+                        메인으로
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+    <script>
+        let wrongAnswers = [];
+        
+        function loadWrongAnswers() {
+            wrongAnswers = getWrongAnswers();
+            document.getElementById('wrongCount').textContent = wrongAnswers.length;
+            
+            if (wrongAnswers.length === 0) {
+                document.getElementById('wrongAnswersList').innerHTML = `
+                    <div class="welcome-card" style="text-align: center;">
+                        <p>복습할 오답이 없습니다.</p>
+                        <p style="color: #6b7280; font-size: 0.875rem; margin-top: 0.5rem;">
+                            퀴즈를 풀고 틀린 단어가 여기에 표시됩니다.
+                        </p>
+                    </div>
+                `;
+                document.querySelector('.review-actions').style.display = 'none';
+                return;
+            }
+            
+            displayWrongAnswers();
+        }
+        
+        function displayWrongAnswers() {
+            const listHtml = wrongAnswers.map((item, index) => `
+                <div class="wrong-answer-item">
+                    <div class="wrong-answer-word">${item.word}</div>
+                    <div class="wrong-answer-definition">${item.definition}</div>
+                    <div class="wrong-answer-tried">
+                        시도한 답: ${item.attempts.map(a => `<span style="color: #ef4444;">${a}</span>`).join(', ')}
+                    </div>
+                    <div style="margin-top: 0.5rem; display: flex; justify-content: space-between; align-items: center;">
+                        <span style="font-size: 0.75rem; color: #6b7280;">
+                            ${formatDate(item.lastAttempt)}
+                        </span>
+                        <button class="btn-secondary" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;" 
+                                onclick="removeFromWrongAnswers('${item.word}')">
+                            제거
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.getElementById('wrongAnswersList').innerHTML = listHtml;
+        }
+        
+        function removeFromWrongAnswers(word) {
+            removeWrongAnswer(word);
+            loadWrongAnswers();
+        }
+        
+        function retryWrongAnswers() {
+            if (wrongAnswers.length === 0) {
+                alert('복습할 오답이 없습니다.');
+                return;
+            }
+            
+            // Save wrong answers as temporary vocabulary for quiz
+            const retryVocabulary = wrongAnswers.map(item => ({
+                word: item.word,
+                definition: item.definition
+            }));
+            
+            localStorage.setItem('retryMode', 'true');
+            localStorage.setItem('retryVocabulary', JSON.stringify(retryVocabulary));
+            
+            window.location.href = 'quiz.html';
+        }
+        
+        function clearAndGoHome() {
+            if (confirm('모든 오답을 삭제하시겠습니까?')) {
+                clearWrongAnswers();
+                window.location.href = 'index.html';
+            }
+        }
+        
+        // Initialize
+        loadWrongAnswers();
+    </script>
+</body>
+</html>

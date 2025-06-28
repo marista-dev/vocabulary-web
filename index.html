@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="CSV 파일을 이용한 어휘 퀴즈 앱">
+    
+    <title>어휘 퀴즈</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <header>
+            <h1>어휘 퀴즈</h1>
+        </header>
+        
+        <main class="menu-container">
+            <div class="welcome-card">
+                <h2>환영합니다!</h2>
+                <p>CSV 파일을 업로드하여 퀴즈를 시작하세요</p>
+            </div>
+            
+            <div class="file-upload-section">
+                <input type="file" id="csvFile" accept=".csv" style="display: none;">
+                <button class="btn-primary" onclick="document.getElementById('csvFile').click()">
+                    CSV 파일 선택
+                </button>
+                <div id="fileStatus" class="file-status"></div>
+            </div>
+            
+            <div class="menu-buttons">
+                <button class="btn-primary btn-large" onclick="startQuiz()" id="startQuizBtn" disabled>
+                    퀴즈 시작
+                </button>
+                
+                <button class="btn-secondary btn-large" onclick="reviewWrongAnswers()" id="reviewBtn">
+                    오답 복습
+                    <span class="badge" id="wrongCountBadge">0</span>
+                </button>
+            </div>
+            
+            <div class="stats-card">
+                <h3>통계</h3>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <span class="stat-label">전체 단어</span>
+                        <span class="stat-value" id="totalWords">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">오답 단어</span>
+                        <span class="stat-value" id="wrongWords">0</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="app.js"></script>
+    <script>
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                Papa.parse(file, {
+                    complete: function(results) {
+                        try {
+                            if (results.errors.length > 0) {
+                                console.warn('CSV parsing warnings:', results.errors);
+                            }
+                            
+                            const vocabulary = results.data
+                                .filter(row => row.length >= 2 && row[0] && row[1])
+                                .map(row => ({
+                                    word: row[0].trim(),
+                                    definition: row[1].trim()
+                                }));
+                            
+                            if (vocabulary.length > 0) {
+                                localStorage.setItem('vocabulary', JSON.stringify(vocabulary));
+                                document.getElementById('fileStatus').textContent = 
+                                    `${vocabulary.length}개 단어 로드됨`;
+                                document.getElementById('startQuizBtn').disabled = false;
+                                document.getElementById('totalWords').textContent = vocabulary.length;
+                                updateWrongCount();
+                            } else {
+                                alert('CSV 파일에서 유효한 단어를 찾을 수 없습니다. 형식: 단어,정의');
+                            }
+                        } catch (error) {
+                            console.error('Error processing CSV:', error);
+                            alert('CSV 파일 처리 중 오류가 발생했습니다.');
+                        }
+                    },
+                    error: function(error) {
+                        console.error('CSV parsing error:', error);
+                        alert('CSV 파일을 읽을 수 없습니다.');
+                    },
+                    encoding: 'UTF-8'
+                });
+            }
+        });
+        
+        function startQuiz() {
+            window.location.href = 'quiz.html';
+        }
+        
+        function reviewWrongAnswers() {
+            const wrongAnswers = JSON.parse(localStorage.getItem('wrongAnswers') || '[]');
+            if (wrongAnswers.length === 0) {
+                alert('복습할 오답이 없습니다.');
+                return;
+            }
+            window.location.href = 'review.html';
+        }
+        
+        function updateWrongCount() {
+            const wrongAnswers = JSON.parse(localStorage.getItem('wrongAnswers') || '[]');
+            document.getElementById('wrongCountBadge').textContent = wrongAnswers.length;
+            document.getElementById('wrongWords').textContent = wrongAnswers.length;
+        }
+        
+        // Initialize
+        updateWrongCount();
+        const vocabulary = JSON.parse(localStorage.getItem('vocabulary') || '[]');
+        if (vocabulary.length > 0) {
+            document.getElementById('fileStatus').textContent = 
+                `${vocabulary.length}개 단어 로드됨`;
+            document.getElementById('startQuizBtn').disabled = false;
+            document.getElementById('totalWords').textContent = vocabulary.length;
+        }
+    </script>
+</body>
+</html>

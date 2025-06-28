@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#6366f1">
+    <meta name="description" content="어휘 퀴즈 - 단어 맞추기">
+    
+    <title>어휘 퀴즈 - 진행중</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <header>
+            <h1>어휘 퀴즈</h1>
+        </header>
+        
+        <main>
+            <div class="quiz-container">
+                <div class="quiz-progress">
+                    <div class="progress-text">
+                        <span id="currentQuestion">1</span> / <span id="totalQuestions">0</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <div class="definition-card">
+                    <p class="definition-text" id="definitionText">
+                        단어를 로드하는 중...
+                    </p>
+                </div>
+                
+                <div class="answer-section">
+                    <div class="input-group">
+                        <input 
+                            type="text" 
+                            id="answerInput" 
+                            placeholder="단어를 입력하세요" 
+                            autocomplete="off"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            spellcheck="false"
+                        >
+                        <div id="feedback" class="feedback" style="display: none;"></div>
+                    </div>
+                    
+                    <button class="btn-primary btn-large" id="checkBtn" onclick="verifyAnswer()">
+                        확인
+                    </button>
+                    
+                    <button class="btn-secondary btn-large" id="nextBtn" onclick="nextQuestion()" style="display: none;">
+                        다음 문제
+                    </button>
+                </div>
+                
+                <div class="quiz-actions" style="margin-top: 2rem;">
+                    <button class="btn-secondary" onclick="if(confirm('퀴즈를 종료하시겠습니까?')) window.location.href='index.html'">
+                        퀴즈 종료
+                    </button>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <script src="app.js"></script>
+    <script>
+        let vocabulary = [];
+        let currentIndex = 0;
+        let correctCount = 0;
+        let isAnswered = false;
+        
+        // Initialize quiz
+        function initQuiz() {
+            // Check if we're in retry mode
+            const isRetryMode = localStorage.getItem('retryMode') === 'true';
+            if (isRetryMode) {
+                const retryVocabulary = JSON.parse(localStorage.getItem('retryVocabulary') || '[]');
+                if (retryVocabulary.length > 0) {
+                    vocabulary = shuffleArray(retryVocabulary);
+                    localStorage.removeItem('retryMode');
+                    localStorage.removeItem('retryVocabulary');
+                } else {
+                    alert('복습할 단어가 없습니다.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+            } else {
+                const savedVocabulary = getVocabulary();
+                if (savedVocabulary.length === 0) {
+                    alert('단어가 없습니다. 먼저 CSV 파일을 업로드해주세요.');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                vocabulary = shuffleArray(savedVocabulary);
+            }
+            
+            document.getElementById('totalQuestions').textContent = vocabulary.length;
+            
+            showQuestion();
+            
+            // Enable keyboard navigation
+            enableKeyboardNavigation({
+                onEnter: () => {
+                    if (!isAnswered) {
+                        verifyAnswer();
+                    } else {
+                        nextQuestion();
+                    }
+                }
+            });
+            
+            // Focus on input
+            document.getElementById('answerInput').focus();
+        }
+        
+        function showQuestion() {
+            if (currentIndex >= vocabulary.length) {
+                showResults();
+                return;
+            }
+            
+            const question = vocabulary[currentIndex];
+            document.getElementById('definitionText').textContent = question.definition;
+            document.getElementById('currentQuestion').textContent = currentIndex + 1;
+            
+            // Update progress bar
+            const progress = ((currentIndex + 1) / vocabulary.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+            
+            // Reset input and feedback
+            const input = document.getElementById('answerInput');
+            input.value = '';
+            input.className = '';
+            input.disabled = false;
+            input.focus();
+            
+            document.getElementById('feedback').style.display = 'none';
+            document.getElementById('checkBtn').style.display = 'block';
+            document.getElementById('nextBtn').style.display = 'none';
+            
+            isAnswered = false;
+        }
+        
+        function verifyAnswer() {
+            if (isAnswered) return;
+            
+            const userAnswer = document.getElementById('answerInput').value.trim();
+            if (!userAnswer) {
+                document.getElementById('answerInput').classList.add('shake');
+                setTimeout(() => {
+                    document.getElementById('answerInput').classList.remove('shake');
+                }, 300);
+                return;
+            }
+            
+            const question = vocabulary[currentIndex];
+            const isCorrect = checkAnswer(userAnswer, question.word);
+            
+            const input = document.getElementById('answerInput');
+            const feedback = document.getElementById('feedback');
+            
+            if (isCorrect) {
+                input.classList.add('correct');
+                feedback.textContent = '정답입니다!';
+                feedback.className = 'feedback correct';
+                correctCount++;
+            } else {
+                input.classList.add('incorrect');
+                feedback.innerHTML = `틀렸습니다. 정답: <strong>${question.word}</strong>`;
+                feedback.className = 'feedback incorrect';
+                
+                // Save wrong answer
+                addWrongAnswer(question.word, question.definition, userAnswer);
+            }
+            
+            feedback.style.display = 'block';
+            input.disabled = true;
+            isAnswered = true;
+            
+            document.getElementById('checkBtn').style.display = 'none';
+            document.getElementById('nextBtn').style.display = 'block';
+            document.getElementById('nextBtn').focus();
+        }
+        
+        function nextQuestion() {
+            currentIndex++;
+            showQuestion();
+        }
+        
+        function showResults() {
+            const accuracy = Math.round((correctCount / vocabulary.length) * 100);
+            const wrongCount = vocabulary.length - correctCount;
+            
+            const html = `
+                <div class="welcome-card" style="text-align: center;">
+                    <h2>퀴즈 완료!</h2>
+                    <div class="stats-grid" style="margin-top: 1.5rem;">
+                        <div class="stat-item">
+                            <span class="stat-label">정답률</span>
+                            <span class="stat-value">${accuracy}%</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">정답/전체</span>
+                            <span class="stat-value">${correctCount}/${vocabulary.length}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 2rem; display: flex; flex-direction: column; gap: 1rem;">
+                        ${wrongCount > 0 ? 
+                            `<button class="btn-primary btn-large" onclick="window.location.href='review.html'">
+                                오답 복습하기 (${wrongCount}개)
+                            </button>` : ''
+                        }
+                        <button class="btn-secondary btn-large" onclick="window.location.href='index.html'">
+                            메인으로
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            document.querySelector('.quiz-container').innerHTML = html;
+        }
+        
+        // Initialize when page loads
+        initQuiz();
+    </script>
+</body>
+</html>
