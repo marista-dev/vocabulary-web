@@ -85,30 +85,62 @@ function normalizeKorean(text) {
 
 // Check if answer is correct (with some flexibility)
 function checkAnswer(userAnswer, correctAnswer) {
-    const normalizedUser = normalizeKorean(userAnswer);
-    const normalizedCorrect = normalizeKorean(correctAnswer);
+    // 공백을 완전히 제거하고 소문자로 변환
+    const normalizedUser = userAnswer
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '') // 모든 공백 제거
+        .replace(/[.,!?;:'"]/g, '');
     
-    // Exact match
+    const normalizedCorrect = correctAnswer
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '') // 모든 공백 제거
+        .replace(/[.,!?;:'"]/g, '');
+    
+    // 완전 일치 (공백 무시)
     if (normalizedUser === normalizedCorrect) {
         return true;
     }
     
-    // Check if the answer contains the correct answer (for compound words)
+    // 괄호가 있는 경우 약자 추출 (예: "SRT(Shortest Remaining Time First)")
+    const acronymMatch = correctAnswer.match(/^([A-Z]+)\s*\(/);
+    if (acronymMatch) {
+        const acronym = acronymMatch[1].toLowerCase();
+        if (normalizedUser === acronym) {
+            return true;
+        }
+    }
+    
+    // 괄호 안의 전체 이름도 정답으로 처리
+    const fullNameMatch = correctAnswer.match(/\(([^)]+)\)/);
+    if (fullNameMatch) {
+        const fullName = fullNameMatch[1]
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, '') // 공백 제거
+            .replace(/[.,!?;:'"]/g, '');
+        if (normalizedUser === fullName) {
+            return true;
+        }
+    }
+    
+    // 한글 단어에서 괄호 앞 부분만 입력해도 정답 처리
+    const koreanBeforeParenthesis = correctAnswer.split('(')[0]
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, '') // 공백 제거
+        .replace(/[.,!?;:'"]/g, '');
+    if (normalizedUser === koreanBeforeParenthesis) {
+        return true;
+    }
+    
+    // 부분 일치 검사 (정답이 사용자 답변에 포함되거나 그 반대)
     if (normalizedUser.includes(normalizedCorrect) || normalizedCorrect.includes(normalizedUser)) {
         return true;
     }
     
-    // Check for common variations (e.g., with/without particles)
-    const particles = ['은', '는', '이', '가', '을', '를', '의', '에', '에서', '으로', '로'];
-    let userWithoutParticles = normalizedUser;
-    let correctWithoutParticles = normalizedCorrect;
-    
-    particles.forEach(particle => {
-        userWithoutParticles = userWithoutParticles.replace(new RegExp(particle + '$'), '');
-        correctWithoutParticles = correctWithoutParticles.replace(new RegExp(particle + '$'), '');
-    });
-    
-    return userWithoutParticles === correctWithoutParticles;
+    return false;
 }
 
 // Format date for display
