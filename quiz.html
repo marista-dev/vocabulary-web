@@ -74,6 +74,58 @@
         let correctCount = 0;
         let isAnswered = false;
         
+        // 모바일 키보드 이벤트 처리 함수
+        function setupMobileKeyboardHandlers() {
+            const answerInput = document.getElementById('answerInput');
+            const definitionCard = document.getElementById('definitionCard');
+            let initialHeight = window.innerHeight;
+
+            // 포커스 이벤트
+            answerInput.addEventListener('focus', () => {
+                if (window.innerWidth <= 768) {
+                    setTimeout(() => {
+                        if (window.innerHeight < initialHeight * 0.75) {
+                            document.body.classList.add('keyboard-open');
+                            definitionCard.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start',
+                                inline: 'nearest'
+                            });
+                        }
+                    }, 300);
+                }
+            });
+
+            // 블러 이벤트
+            answerInput.addEventListener('blur', () => {
+                setTimeout(() => {
+                    document.body.classList.remove('keyboard-open');
+                }, 100);
+            });
+
+            // 윈도우 리사이즈 이벤트 (키보드 열림/닫힘 감지)
+            let resizeTimer;
+            window.addEventListener('resize', () => {
+                clearTimeout(resizeTimer);
+                resizeTimer = setTimeout(() => {
+                    const currentHeight = window.innerHeight;
+                    if (currentHeight >= initialHeight * 0.9) {
+                        document.body.classList.remove('keyboard-open');
+                    }
+                    if (!document.body.classList.contains('keyboard-open')) {
+                        initialHeight = currentHeight;
+                    }
+                }, 100);
+            });
+
+            // 오리엔테이션 변경 시 기준 높이 재설정
+            window.addEventListener('orientationchange', () => {
+                setTimeout(() => {
+                    initialHeight = window.innerHeight;
+                }, 500);
+            });
+        }
+        
         // Initialize quiz
         function initQuiz() {
             // Check if we're in retry mode
@@ -123,6 +175,8 @@
             
             // Focus on input
             document.getElementById('answerInput').focus();
+            // 모바일 키보드 이벤트 처리
+            setupMobileKeyboardHandlers();
         }
         
         function showQuestion() {
@@ -144,7 +198,10 @@
             input.value = '';
             input.className = '';
             input.disabled = false;
-            input.focus();
+            // 모바일이 아닌 경우에만 자동 포커스
+            if (window.innerWidth > 768) {
+                input.focus();
+            }
             
             document.getElementById('feedback').style.display = 'none';
             document.getElementById('checkBtn').style.display = 'block';
