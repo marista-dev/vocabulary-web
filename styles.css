@@ -371,6 +371,28 @@ input.incorrect {
     }
 }
 
+@media (max-width: 600px) {
+  .quiz-container {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    min-height: 100dvh;
+    justify-content: flex-start;
+  }
+  .definition-card {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: #fff;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+  }
+  .answer-section {
+    margin-top: auto;
+    margin-bottom: 2rem;
+  }
+}
+
 /* Animations */
 @keyframes shake {
     0%, 100% { transform: translateX(0); }

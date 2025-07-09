@@ -238,6 +238,13 @@
         
         // Initialize when page loads
         initQuiz();
+
+        // 입력창 포커스 시 스크롤 조정 (모바일 대응)
+        document.getElementById('answerInput').addEventListener('focus', () => {
+            setTimeout(() => {
+                document.getElementById('answerInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }, 300);
+        });
     </script>
 </body>
 </html>
